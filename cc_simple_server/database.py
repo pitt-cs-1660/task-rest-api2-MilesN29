@@ -4,10 +4,10 @@
 import sqlite3
 
 # sqlite3 database file path
-DATABASE_PATH = "./tasks.db"
+DATABASE_PATH = "./tasks.db" #id like to know how this works
 
 
-def init_db():
+def init_db(): # database constructor?
     with sqlite3.connect(DATABASE_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute('''

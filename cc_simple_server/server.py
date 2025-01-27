@@ -36,8 +36,20 @@ async def create_task(task_data: TaskCreate):
     Returns:
         TaskRead: The created task data
     """
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Not implemented")
+    task_title = task_data.title
+    task_description = task_data.description
+    task_completed = task_data.completed
+    
+    db_conn = get_db_connection()
+    with db_conn: #need this to avoid --> sqlite3.OperationalError: database is locked
+        cursor = db_conn.cursor()
+        
+        cursor.execute("INSERT INTO tasks (title, description, completed) VALUES (?, ?, ?)", (task_title, task_description, task_completed))
+        
+        task_id = cursor.lastrowid
+        cursor.close()
 
+    return TaskRead(id=task_id, title=task_title, description= task_description, completed=task_completed)
 
 # GET ROUTE to get all tasks
 @app.get("/tasks/", response_model=list[TaskRead])
@@ -51,7 +63,19 @@ async def get_tasks():
     Returns:
         list[TaskRead]: A list of all tasks in the database
     """
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Not implemented")
+    db_conn = get_db_connection()
+    with db_conn:
+        cursor = db_conn.cursor()
+        cursor.execute("SELECT id, title, description, completed FROM tasks") #need this to get to the actaul database
+        tasks = []
+        
+        for row in cursor.fetchall():
+            task = TaskRead(id = row[0], title = row[1], description=row[2],completed=row[3])
+            tasks.append(task)
+            
+        cursor.close()
+        
+    return tasks
 
 
 # UPDATE ROUTE data is sent in the body of the request and the task_id is in the URL
@@ -67,7 +91,22 @@ async def update_task(task_id: int, task_data: TaskCreate):
     Returns:
         TaskRead: The updated task data
     """
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Not implemented")
+    task_title = task_data.title
+    task_description = task_data.description
+    task_completed = task_data.completed
+    db_conn = get_db_connection()
+    with db_conn:
+        cursor = db_conn.cursor()
+        
+        cursor.execute("UPDATE tasks SET title = ? WHERE id = ?", (task_title, task_id))
+        cursor.execute("UPDATE tasks SET description = ? WHERE id = ?", (task_description, task_id))
+        cursor.execute("UPDATE tasks SET completed = ? WHERE id = ?", (task_completed, task_id))
+        
+        cursor.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)) #have to put a extra comma because it needs to be a tuple
+        
+        row = cursor.fetchone()
+        task = TaskRead(id=task_id, title=row[1], description=row[2], completed=row[3])
+        return task
 
 
 # DELETE ROUTE task_id is in the URL
@@ -82,4 +121,12 @@ async def delete_task(task_id: int):
     Returns:
         dict: A message indicating that the task was deleted successfully
     """
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Not implemented")
+    db_conn = get_db_connection()
+    with db_conn:
+        cursor = db_conn.cursor()
+        
+        cursor.execute("DELETE FROM tasks WHERE id = ?", (task_id,)) #have to put a extra comma because it needs to be a tuple
+        
+        #maybe shoudl have a more in depth check here?
+        return {'message': f"Task {task_id} deleted successfully"}
+    return {'message': f'Task {task_id} failed to delete'}
